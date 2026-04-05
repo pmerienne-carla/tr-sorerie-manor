@@ -30,8 +30,8 @@ function queryDatabase(databaseId, token, body) {
 
 exports.handler = async function(event) {
   const NOTION_TOKEN = process.env.NOTION_TOKEN;
-  const DB_REVENUS   = '303892c600e681cab56ef59a7245206a';
-  const DB_DEPENSES  = '303892c600e681c3801ff1d09283369d';
+  const DB_REVENUS   = '303892c600e68169b189c38a1002d44a';
+  const DB_DEPENSES  = '303892c600e681f984a1ec530a1ea809';
 
   if (!NOTION_TOKEN) {
     return {
