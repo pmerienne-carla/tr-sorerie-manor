@@ -26,9 +26,9 @@ function queryDatabase(databaseId, token, body) {
 }
 
 exports.handler = async function(event) {
-  const NOTION_TOKEN    = process.env.NOTION_TOKEN;
-  const DB_REVENUS      = '303892c600e6812e881efea7118d1354';
-  const DB_DEPENSES     = '303892c600e6810c9143c9e5394af56e';
+  const NOTION_TOKEN = process.env.NOTION_TOKEN;
+  const DB_REVENUS   = '303892c600e6812e881efea7118d1354';
+  const DB_DEPENSES  = '303892c600e6810c9143c9e5394af56e';
 
   if (!NOTION_TOKEN) {
     return {
@@ -48,7 +48,6 @@ exports.handler = async function(event) {
   };
 
   try {
-    // Fetch revenus avec pagination
     let revenus = [];
     let cursor = null;
     do {
@@ -60,7 +59,6 @@ exports.handler = async function(event) {
       cursor = res.body.has_more ? res.body.next_cursor : null;
     } while (cursor);
 
-    // Fetch dépenses avec pagination
     let depenses = [];
     cursor = null;
     do {
