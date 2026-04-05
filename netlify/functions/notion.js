@@ -17,7 +17,10 @@ function queryDatabase(databaseId, token, body) {
     const req = https.request(options, res => {
       let body = '';
       res.on('data', chunk => body += chunk);
-      res.on('end', () => resolve({ statusCode: res.statusCode, body: JSON.parse(body) }));
+      res.on('end', () => {
+        try { resolve({ statusCode: res.statusCode, body: JSON.parse(body) }); }
+        catch(e) { resolve({ statusCode: res.statusCode, body: {} }); }
+      });
     });
     req.on('error', reject);
     req.write(data);
@@ -38,7 +41,17 @@ exports.handler = async function(event) {
     };
   }
 
-  const { dateStart, dateEnd } = JSON.parse(event.body || '{}');
+  let requestBody = {};
+  try { requestBody = JSON.parse(event.body || '{}'); } catch(e) {}
+  const { dateStart, dateEnd } = requestBody;
+
+  if (!dateStart || !dateEnd) {
+    return {
+      statusCode: 400,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: 'dateStart et dateEnd sont requis' })
+    };
+  }
 
   const filter = {
     and: [
@@ -54,8 +67,8 @@ exports.handler = async function(event) {
       const body = { page_size: 100, filter };
       if (cursor) body.start_cursor = cursor;
       const res = await queryDatabase(DB_REVENUS, NOTION_TOKEN, body);
-      if (res.statusCode !== 200) throw new Error(`Revenus API error: ${JSON.stringify(res.body)}`);
-      revenus = revenus.concat(res.body.results);
+      if (res.statusCode !== 200) throw new Error(`Revenus: ${JSON.stringify(res.body)}`);
+      revenus = revenus.concat(res.body.results || []);
       cursor = res.body.has_more ? res.body.next_cursor : null;
     } while (cursor);
 
@@ -65,8 +78,8 @@ exports.handler = async function(event) {
       const body = { page_size: 100, filter };
       if (cursor) body.start_cursor = cursor;
       const res = await queryDatabase(DB_DEPENSES, NOTION_TOKEN, body);
-      if (res.statusCode !== 200) throw new Error(`Dépenses API error: ${JSON.stringify(res.body)}`);
-      depenses = depenses.concat(res.body.results);
+      if (res.statusCode !== 200) throw new Error(`Dépenses: ${JSON.stringify(res.body)}`);
+      depenses = depenses.concat(res.body.results || []);
       cursor = res.body.has_more ? res.body.next_cursor : null;
     } while (cursor);
 
