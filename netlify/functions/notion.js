@@ -32,6 +32,7 @@ exports.handler = async function(event) {
   const NOTION_TOKEN = process.env.NOTION_TOKEN;
   const DB_REVENUS  = '303892c600e6813894a1caa73b8d428a';
   const DB_DEPENSES = '303892c600e681a18695ee895b5edc99';
+  const ID_SG       = '303892c600e68196bb13d295cf5a52c5';
 
   if (!NOTION_TOKEN) {
     return {
@@ -62,12 +63,12 @@ exports.handler = async function(event) {
     ]
   };
 
-  // Filtre dépenses — propriété "Compte" (sans s)
+  // Dépenses — "Compte" est une Relation → on filtre par l'ID de la page SG
   const filterDepenses = {
     and: [
       { property: 'Date', date: { on_or_after: dateStart } },
       { property: 'Date', date: { before: dateEnd } },
-      { property: 'Compte', select: { equals: 'SG' } }
+      { property: 'Compte', relation: { contains: ID_SG } }
     ]
   };
 
