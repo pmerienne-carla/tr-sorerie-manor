@@ -30,8 +30,8 @@ function queryDatabase(databaseId, token, body) {
 
 exports.handler = async function(event) {
   const NOTION_TOKEN = process.env.NOTION_TOKEN;
-  const DB_REVENUS   = '303892c600e6813894a1caa73b8d428a';
-  const DB_DEPENSES  = '303892c600e681a18695ee895b5edc99';
+  const DB_REVENUS  = '303892c600e6813894a1caa73b8d428a';
+  const DB_DEPENSES = '303892c600e681a18695ee895b5edc99';
 
   if (!NOTION_TOKEN) {
     return {
@@ -43,8 +43,8 @@ exports.handler = async function(event) {
 
   let requestBody = {};
   try { requestBody = JSON.parse(event.body || '{}'); } catch(e) {}
-  const { dateStart, dateEnd } = requestBody;
 
+  const { dateStart, dateEnd } = requestBody;
   if (!dateStart || !dateEnd) {
     return {
       statusCode: 400,
@@ -53,10 +53,21 @@ exports.handler = async function(event) {
     };
   }
 
-  const filter = {
+  // Filtre revenus — propriété "Comptes" (avec s)
+  const filterRevenus = {
     and: [
       { property: 'Date', date: { on_or_after: dateStart } },
-      { property: 'Date', date: { before: dateEnd } }
+      { property: 'Date', date: { before: dateEnd } },
+      { property: 'Comptes', select: { equals: 'SG' } }
+    ]
+  };
+
+  // Filtre dépenses — propriété "Compte" (sans s)
+  const filterDepenses = {
+    and: [
+      { property: 'Date', date: { on_or_after: dateStart } },
+      { property: 'Date', date: { before: dateEnd } },
+      { property: 'Compte', select: { equals: 'SG' } }
     ]
   };
 
@@ -64,7 +75,7 @@ exports.handler = async function(event) {
     let revenus = [];
     let cursor = null;
     do {
-      const body = { page_size: 100, filter };
+      const body = { page_size: 100, filter: filterRevenus };
       if (cursor) body.start_cursor = cursor;
       const res = await queryDatabase(DB_REVENUS, NOTION_TOKEN, body);
       if (res.statusCode !== 200) throw new Error(`Revenus: ${JSON.stringify(res.body)}`);
@@ -75,7 +86,7 @@ exports.handler = async function(event) {
     let depenses = [];
     cursor = null;
     do {
-      const body = { page_size: 100, filter };
+      const body = { page_size: 100, filter: filterDepenses };
       if (cursor) body.start_cursor = cursor;
       const res = await queryDatabase(DB_DEPENSES, NOTION_TOKEN, body);
       if (res.statusCode !== 200) throw new Error(`Dépenses: ${JSON.stringify(res.body)}`);
