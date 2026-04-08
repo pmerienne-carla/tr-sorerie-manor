@@ -54,12 +54,12 @@ exports.handler = async function(event) {
     };
   }
 
-  // Filtre revenus — propriété "Comptes" (avec s)
+  // Revenus — "Comptes" est une Relation → on filtre par l'ID de la page SG
   const filterRevenus = {
     and: [
       { property: 'Date', date: { on_or_after: dateStart } },
       { property: 'Date', date: { before: dateEnd } },
-      { property: 'Comptes', select: { equals: 'SG' } }
+      { property: 'Comptes', relation: { contains: ID_SG } }
     ]
   };
 
@@ -79,6 +79,39 @@ exports.handler = async function(event) {
       const body = { page_size: 100, filter: filterRevenus };
       if (cursor) body.start_cursor = cursor;
       const res = await queryDatabase(DB_REVENUS, NOTION_TOKEN, body);
+      if (res.statusCode !== 200) throw new Error(`Revenus: ${JSON.stringify(res.body)}`);
+      revenus = revenus.concat(res.body.results || []);
+      cursor = res.body.has_more ? res.body.next_cursor : null;
+    } while (cursor);
+
+    let depenses = [];
+    cursor = null;
+    do {
+      const body = { page_size: 100, filter: filterDepenses };
+      if (cursor) body.start_cursor = cursor;
+      const res = await queryDatabase(DB_DEPENSES, NOTION_TOKEN, body);
+      if (res.statusCode !== 200) throw new Error(`Dépenses: ${JSON.stringify(res.body)}`);
+      depenses = depenses.concat(res.body.results || []);
+      cursor = res.body.has_more ? res.body.next_cursor : null;
+    } while (cursor);
+
+    return {
+      statusCode: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      },
+      body: JSON.stringify({ revenus, depenses })
+    };
+  } catch(e) {
+    return {
+      statusCode: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      body: JSON.stringify({ message: e.message })
+    };
+  }
+};      const res = await queryDatabase(DB_REVENUS, NOTION_TOKEN, body);
       if (res.statusCode !== 200) throw new Error(`Revenus: ${JSON.stringify(res.body)}`);
       revenus = revenus.concat(res.body.results || []);
       cursor = res.body.has_more ? res.body.next_cursor : null;
