@@ -124,7 +124,6 @@ function fmt(v) { return (v>=0?'+':'') + v.toLocaleString('fr-FR',{minimumFracti
 function fmtAbs(v) { return Math.abs(v).toLocaleString('fr-FR',{minimumFractionDigits:2,maximumFractionDigits:2}) + ' €'; }
 
 function getMontant(props) {
-  // Essayer différents noms de propriété pour le montant
   const keys = ['Montant', 'Amount', 'montant'];
   for (const k of keys) {
     if (!props[k]) continue;
@@ -144,18 +143,64 @@ async function loadData() {
   const dateStart = `${currentYear}-${String(currentMonth).padStart(2,'0')}-01`;
   const dateEnd   = `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`;
 
-  try {
-    const res = await fetch('/.netlify/functions/notion', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ dateStart, dateEnd })
-    });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
-    if (data.message) throw new Error(data.message);
+  const WORKER      = 'https://notion-proxy.pmerienne.workers.dev';
+  const DB_REVENUS  = '303892c600e6813894a1caa73b8d428a';
+  const DB_DEPENSES = '303892c600e681a18695ee895b5edc99';
+  const ID_SG       = '303892c600e68196bb13d295cf5a52c5';
 
-    setStatus(`✓ ${data.revenus.length} revenus · ${data.depenses.length} dépenses chargés`, 'ok');
-    processData(data.revenus, data.depenses);
+  const filterRevenus = {
+    filter: { and: [
+      { property: 'Date', date: { on_or_after: dateStart } },
+      { property: 'Date', date: { before: dateEnd } },
+      { property: 'Comptes', relation: { contains: ID_SG } }
+    ]}
+  };
+  const filterDepenses = {
+    filter: { and: [
+      { property: 'Date', date: { on_or_after: dateStart } },
+      { property: 'Date', date: { before: dateEnd } },
+      { property: 'Compte', relation: { contains: ID_SG } }
+    ]}
+  };
+
+  try {
+    // Pagination Revenus
+    let revenus = [], cursor = null;
+    do {
+      const body = { page_size: 100, ...filterRevenus };
+      if (cursor) body.start_cursor = cursor;
+      const res = await fetch(`${WORKER}/${DB_REVENUS}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`Revenus HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.message) throw new Error(data.message);
+      revenus = revenus.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+
+    // Pagination Dépenses
+    let depenses = [];
+    cursor = null;
+    do {
+      const body = { page_size: 100, ...filterDepenses };
+      if (cursor) body.start_cursor = cursor;
+      const res = await fetch(`${WORKER}/${DB_DEPENSES}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) throw new Error(`Dépenses HTTP ${res.status}`);
+      const data = await res.json();
+      if (data.message) throw new Error(data.message);
+      depenses = depenses.concat(data.results || []);
+      cursor = data.has_more ? data.next_cursor : null;
+    } while (cursor);
+
+    setStatus(`✓ ${revenus.length} revenus · ${depenses.length} dépenses chargés`, 'ok');
+    processData(revenus, depenses);
   } catch(e) {
     setStatus('Erreur : ' + e.message, 'error');
     console.error(e);
@@ -274,5 +319,3 @@ loadData();
 </script>
 </body>
 </html>
- 
- 
