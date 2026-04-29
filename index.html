@@ -44,11 +44,13 @@
   .btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
   .status { font-family: 'Inter', sans-serif; font-size: 0.62rem; color: var(--muted); min-height: 14px; flex-shrink: 0; }
   .status.loading { color: var(--accent-blue); } .status.error { color: var(--accent-red); } .status.ok { color: var(--accent-green); }
-  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; flex-shrink: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; flex-shrink: 0; }
   .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
   .kpi-label { font-family: 'Inter', sans-serif; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
   .kpi-value { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
-  .neg { color: var(--accent-red); } .pos { color: var(--accent-green); }
+  .kpi-sub { font-family: 'Inter', sans-serif; font-size: 0.55rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.04em; }
+  .kpi-today { border: 1px solid rgba(43,127,255,0.35); background: rgba(43,127,255,0.04); }
+  .neg { color: var(--accent-red); } .pos { color: var(--accent-green); } .neutral { color: var(--accent-blue); }
   .chart-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; flex-shrink: 0; }
   .chart-title { font-size: 0.7rem; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
   .legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -62,6 +64,7 @@
   td { padding: 6px 14px; border-bottom: 1px solid var(--border); color: var(--text); }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(0,0,0,0.02); }
+  tr.today-row td { background: rgba(43,127,255,0.05); }
   .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.58rem; font-weight: 600; }
   .tag-neg { background: rgba(230,51,85,0.12); color: var(--accent-red); }
   .tag-pos { background: rgba(0,179,122,0.12); color: var(--accent-green); }
@@ -97,6 +100,7 @@
   <div class="kpi"><div class="kpi-label">Solde initial</div><div class="kpi-value" id="kpiInit">—</div></div>
   <div class="kpi"><div class="kpi-label">Total entrées</div><div class="kpi-value pos" id="kpiIn">—</div></div>
   <div class="kpi"><div class="kpi-label">Total sorties</div><div class="kpi-value neg" id="kpiOut">—</div></div>
+  <div class="kpi kpi-today"><div class="kpi-label">Solde du jour</div><div class="kpi-value neutral" id="kpiToday">—</div><div class="kpi-sub" id="kpiTodaySub"></div></div>
   <div class="kpi"><div class="kpi-label">Solde fin de mois</div><div class="kpi-value" id="kpiFinal">—</div></div>
 </div>
 
@@ -259,12 +263,36 @@ function renderKPIs(soldeInitial, data) {
   const totalE = data.reduce((a,d) => a+d.e, 0);
   const totalS = data.reduce((a,d) => a+d.s, 0);
   const final  = data[data.length-1].solde;
+
   document.getElementById('kpiInit').textContent  = fmt(soldeInitial);
   document.getElementById('kpiInit').className    = 'kpi-value ' + (soldeInitial>=0?'pos':'neg');
   document.getElementById('kpiIn').textContent    = '+' + fmtAbs(totalE);
   document.getElementById('kpiOut').textContent   = '-' + fmtAbs(totalS);
   document.getElementById('kpiFinal').textContent = fmt(final);
   document.getElementById('kpiFinal').className   = 'kpi-value ' + (final>=0?'pos':'neg');
+
+  const now = new Date();
+  const todayYear  = now.getFullYear();
+  const todayMonth = now.getMonth() + 1;
+  const todayDay   = now.getDate();
+  const kpiTodayEl    = document.getElementById('kpiToday');
+  const kpiTodaySubEl = document.getElementById('kpiTodaySub');
+
+  if (currentYear === todayYear && currentMonth === todayMonth) {
+    const todayEntry = data.find(d => d.j === todayDay);
+    const soldeDuJour = todayEntry ? todayEntry.solde : data[data.length-1].solde;
+    kpiTodayEl.textContent = fmt(soldeDuJour);
+    kpiTodayEl.className   = 'kpi-value ' + (soldeDuJour>=0?'pos':'neg');
+    kpiTodaySubEl.textContent = `au ${todayDay} ${MONTHS_FR[currentMonth-1].substring(0,3).toLowerCase()}.`;
+  } else if (currentYear < todayYear || (currentYear === todayYear && currentMonth < todayMonth)) {
+    kpiTodayEl.textContent = fmt(final);
+    kpiTodayEl.className   = 'kpi-value ' + (final>=0?'pos':'neg');
+    kpiTodaySubEl.textContent = 'mois clôturé';
+  } else {
+    kpiTodayEl.textContent = '—';
+    kpiTodayEl.className   = 'kpi-value neutral';
+    kpiTodaySubEl.textContent = 'mois à venir';
+  }
 }
 
 function renderChart(data) {
@@ -306,13 +334,15 @@ function renderChart(data) {
 }
 
 function renderTable(data) {
+  const now = new Date();
+  const todayDay = (currentYear === now.getFullYear() && currentMonth === now.getMonth()+1) ? now.getDate() : -1;
   const maxFlow = Math.max(...data.map(d=>Math.max(d.e,d.s)),1);
   let html = `<table><thead><tr><th>Jour</th><th>Entrées</th><th>Sorties</th><th>Net du jour</th><th>Solde cumulé</th><th>Flux</th></tr></thead><tbody>`;
   data.forEach(d => {
-    const net=d.e-d.s, isZero=d.e===0&&d.s===0;
+    const net=d.e-d.s, isZero=d.e===0&&d.s===0, isToday=d.j===todayDay;
     const wIn=Math.round(d.e/maxFlow*70), wOut=Math.round(d.s/maxFlow*70);
-    html += `<tr class="${isZero?'zero-row':''}">
-      <td><b>${d.j} ${MONTHS_FR[currentMonth-1].substring(0,3).toLowerCase()}.</b></td>
+    html += `<tr class="${isZero?'zero-row':''}${isToday?' today-row':''}">
+      <td><b>${d.j} ${MONTHS_FR[currentMonth-1].substring(0,3).toLowerCase()}.</b>${isToday?' <span style="font-size:0.55rem;color:var(--accent-blue);font-weight:600;letter-spacing:0.04em;"> AUJOURD\'HUI</span>':''}</td>
       <td class="pos">${d.e>0?'+'+fmtAbs(d.e):'—'}</td>
       <td class="neg">${d.s>0?'-'+fmtAbs(d.s):'—'}</td>
       <td><span class="tag ${net>=0?'tag-pos':'tag-neg'}">${fmt(net)}</span></td>
