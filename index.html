@@ -71,6 +71,7 @@
   .zero-row td { opacity: 0.35; }
   .mini-bar { height: 3px; border-radius: 2px; margin-bottom: 2px; }
   .empty { text-align: center; padding: 40px; font-family: 'Inter', sans-serif; font-size: 0.72rem; color: var(--muted); }
+  .solde-auto { border-bottom-color: var(--accent-green) !important; }
 </style>
 </head>
 <body>
@@ -88,7 +89,7 @@
     </div>
     <div class="solde-input-wrap">
       <label>SOLDE INITIAL</label>
-      <input type="number" id="soldeInitial" value="-1431.82" step="0.01" />
+      <input type="number" id="soldeInitial" value="0" step="0.01" title="Modifiable manuellement" />
     </div>
     <button class="btn-refresh" onclick="loadData()" id="btnRefresh">↻ Actualiser</button>
   </div>
@@ -123,19 +124,58 @@
 
 <script>
 const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-let currentYear = 2026, currentMonth = 4, chartInstance = null;
+
+// ── Mois courant automatique ──────────────────────────────────────────────
+const _now = new Date();
+let currentYear  = _now.getFullYear();
+let currentMonth = _now.getMonth() + 1; // 1-indexé
+let chartInstance = null;
+
+// ── Soldes finals connus (graines) ────────────────────────────────────────
+// Clé = "YYYY-MM" → solde final calculé de ce mois
+// Permet d'alimenter automatiquement le solde initial du mois suivant.
+// Mis à jour en mémoire après chaque chargement réussi.
+const MONTH_FINALS = {
+  '2026-03': -1431.82,  // → solde initial avril 2026
+  '2026-04': -2347.84,  // → solde initial mai 2026
+};
+
+function monthKey(year, month) {
+  return `${year}-${String(month).padStart(2,'0')}`;
+}
+
+function prevMonthKey(year, month) {
+  return month === 1 ? monthKey(year - 1, 12) : monthKey(year, month - 1);
+}
+
+// Injecte le solde initial depuis le final du mois précédent (si connu)
+function autoSetSoldeInitial() {
+  const key = prevMonthKey(currentYear, currentMonth);
+  const input = document.getElementById('soldeInitial');
+  if (MONTH_FINALS[key] !== undefined) {
+    input.value = MONTH_FINALS[key].toFixed(2);
+    input.classList.add('solde-auto');
+    input.title = `Renseigné automatiquement depuis le solde final de ${MONTHS_FR[currentMonth === 1 ? 11 : currentMonth - 2]} — modifiable`;
+  } else {
+    input.classList.remove('solde-auto');
+    input.title = 'Aucune donnée pour le mois précédent — saisie manuelle';
+  }
+}
 
 function updateMonthDisplay() {
   const label = `${MONTHS_FR[currentMonth-1]} ${currentYear}`;
   document.getElementById('monthLabel').textContent = label;
   document.getElementById('monthDisplay').textContent = label;
+  autoSetSoldeInitial();
 }
+
 function changeMonth(dir) {
   currentMonth += dir;
   if (currentMonth > 12) { currentMonth = 1; currentYear++; }
   if (currentMonth < 1)  { currentMonth = 12; currentYear--; }
   updateMonthDisplay();
 }
+
 function setStatus(msg, type='') {
   const el = document.getElementById('status');
   el.textContent = msg; el.className = 'status ' + type;
@@ -253,6 +293,10 @@ function processData(revenus, depenses) {
     solde = Math.round((solde + byDay[d].e - byDay[d].s) * 100) / 100;
     tableData.push({ j: d, e: byDay[d].e, s: byDay[d].s, solde });
   }
+
+  // ── Mémorise le solde final pour alimenter le mois suivant ───────────────
+  const key = monthKey(currentYear, currentMonth);
+  MONTH_FINALS[key] = tableData[tableData.length - 1].solde;
 
   renderKPIs(soldeInitial, tableData);
   renderChart(tableData);
