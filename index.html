@@ -9,7 +9,7 @@
 <style>
   :root {
     --bg: #f5f5f5; --surface: #ffffff; --border: #e0e0e0;
-    --accent-green: #00b37a; --accent-red: #e63355; --accent-blue: #2b7fff;
+    --accent-green: #00b37a; --accent-red: #e63355; --accent-blue: #2b7fff; --accent-orange: #f59e0b;
     --text: #1a1a2e; --muted: #888888; --card: #ffffff;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -42,15 +42,18 @@
   .btn-refresh { background: var(--accent-green); color: #0d0f14; border: none; border-radius: 8px; padding: 8px 16px; font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 700; cursor: pointer; letter-spacing: 0.04em; transition: opacity 0.2s; }
   .btn-refresh:hover { opacity: 0.85; }
   .btn-refresh:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-notion-link { background: transparent; color: var(--accent-blue); border: 1px solid rgba(43,127,255,0.35); border-radius: 8px; padding: 7px 14px; font-family: 'Inter', sans-serif; font-size: 0.72rem; font-weight: 600; cursor: pointer; letter-spacing: 0.04em; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; transition: background 0.2s; white-space: nowrap; }
+  .btn-notion-link:hover { background: rgba(43,127,255,0.08); }
   .status { font-family: 'Inter', sans-serif; font-size: 0.62rem; color: var(--muted); min-height: 14px; flex-shrink: 0; }
   .status.loading { color: var(--accent-blue); } .status.error { color: var(--accent-red); } .status.ok { color: var(--accent-green); }
-  .kpis { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; flex-shrink: 0; }
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; flex-shrink: 0; }
   .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; }
-  .kpi-label { font-family: 'Inter', sans-serif; font-size: 0.58rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
-  .kpi-value { font-size: 1.1rem; font-weight: 700; letter-spacing: -0.02em; }
-  .kpi-sub { font-family: 'Inter', sans-serif; font-size: 0.55rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.04em; }
+  .kpi-label { font-family: 'Inter', sans-serif; font-size: 0.55rem; color: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 4px; }
+  .kpi-value { font-size: 1rem; font-weight: 700; letter-spacing: -0.02em; }
+  .kpi-sub { font-family: 'Inter', sans-serif; font-size: 0.52rem; color: var(--muted); margin-top: 3px; letter-spacing: 0.04em; }
   .kpi-today { border: 1px solid rgba(43,127,255,0.35); background: rgba(43,127,255,0.04); }
-  .neg { color: var(--accent-red); } .pos { color: var(--accent-green); } .neutral { color: var(--accent-blue); }
+  .kpi-transfer { border: 1px solid rgba(245,158,11,0.35); background: rgba(245,158,11,0.04); }
+  .neg { color: var(--accent-red); } .pos { color: var(--accent-green); } .neutral { color: var(--accent-blue); } .transfer { color: var(--accent-orange); }
   .chart-container { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 14px 18px; flex-shrink: 0; }
   .chart-title { font-size: 0.7rem; font-weight: 600; color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 6px; }
   .legend { display: flex; gap: 14px; margin-bottom: 10px; flex-wrap: wrap; }
@@ -65,9 +68,12 @@
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(0,0,0,0.02); }
   tr.today-row td { background: rgba(43,127,255,0.05); }
+  tr.has-transfer td { background: rgba(245,158,11,0.04); }
+  tr.today-row.has-transfer td { background: rgba(245,158,11,0.08); }
   .tag { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 0.58rem; font-weight: 600; }
   .tag-neg { background: rgba(230,51,85,0.12); color: var(--accent-red); }
   .tag-pos { background: rgba(0,179,122,0.12); color: var(--accent-green); }
+  .tag-transfer { background: rgba(245,158,11,0.15); color: var(--accent-orange); }
   .zero-row td { opacity: 0.35; }
   .mini-bar { height: 3px; border-radius: 2px; margin-bottom: 2px; }
   .empty { text-align: center; padding: 40px; font-family: 'Inter', sans-serif; font-size: 0.72rem; color: var(--muted); }
@@ -91,6 +97,7 @@
       <label>SOLDE INITIAL</label>
       <input type="number" id="soldeInitial" value="0" step="0.01" title="Modifiable manuellement" />
     </div>
+    <a href="https://www.notion.so/Transaction-303892c600e6814ba339c10c5d8d4b95" target="_blank" class="btn-notion-link">⇄ Transactions</a>
     <button class="btn-refresh" onclick="loadData()" id="btnRefresh">↻ Actualiser</button>
   </div>
 </div>
@@ -101,6 +108,7 @@
   <div class="kpi"><div class="kpi-label">Solde initial</div><div class="kpi-value" id="kpiInit">—</div></div>
   <div class="kpi"><div class="kpi-label">Total entrées</div><div class="kpi-value pos" id="kpiIn">—</div></div>
   <div class="kpi"><div class="kpi-label">Total sorties</div><div class="kpi-value neg" id="kpiOut">—</div></div>
+  <div class="kpi kpi-transfer"><div class="kpi-label">Transferts SG</div><div class="kpi-value transfer" id="kpiTransferts">—</div><div class="kpi-sub" id="kpiTransfertsSub"></div></div>
   <div class="kpi kpi-today"><div class="kpi-label">Solde du jour</div><div class="kpi-value neutral" id="kpiToday">—</div><div class="kpi-sub" id="kpiTodaySub"></div></div>
   <div class="kpi"><div class="kpi-label">Solde fin de mois</div><div class="kpi-value" id="kpiFinal">—</div></div>
 </div>
@@ -111,6 +119,7 @@
     <div class="legend-item"><div class="legend-dot" style="background:#4d9fff"></div> Solde cumulé</div>
     <div class="legend-item"><div class="legend-dot" style="background:#00e5a0"></div> Entrées du jour</div>
     <div class="legend-item"><div class="legend-dot" style="background:#ff4d6d"></div> Sorties du jour</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f59e0b"></div> Transferts nets</div>
   </div>
   <canvas id="mainChart" height="80"></canvas>
 </div>
@@ -132,12 +141,10 @@ let currentMonth = _now.getMonth() + 1; // 1-indexé
 let chartInstance = null;
 
 // ── Soldes finals connus (graines) ────────────────────────────────────────
-// Clé = "YYYY-MM" → solde final calculé de ce mois
-// Permet d'alimenter automatiquement le solde initial du mois suivant.
-// Mis à jour en mémoire après chaque chargement réussi.
+// ⚠️  Ces valeurs incluent désormais les transactions — recalculer si besoin.
 const MONTH_FINALS = {
   '2026-03': -1431.82,  // → solde initial avril 2026
-  '2026-04': -2347.84,  // → solde initial mai 2026
+  '2026-04': -2347.84,  // → solde initial mai 2026  (à recalculer avec transactions si nécessaire)
 };
 
 function monthKey(year, month) {
@@ -148,7 +155,6 @@ function prevMonthKey(year, month) {
   return month === 1 ? monthKey(year - 1, 12) : monthKey(year, month - 1);
 }
 
-// Injecte le solde initial depuis le final du mois précédent (si connu)
 function autoSetSoldeInitial() {
   const key = prevMonthKey(currentYear, currentMonth);
   const input = document.getElementById('soldeInitial');
@@ -193,6 +199,29 @@ function getMontant(props) {
   return 0;
 }
 
+// Vérifie si un compte (relation) contient l'ID SG
+function hasRelation(props, propName, targetId) {
+  const normalized = targetId.replace(/-/g, '');
+  return (props[propName]?.relation || []).some(r => r.id.replace(/-/g,'') === normalized);
+}
+
+async function fetchAll(worker, dbId, filterBody) {
+  let results = [], cursor = null;
+  do {
+    const body = { page_size: 100, ...filterBody };
+    if (cursor) body.start_cursor = cursor;
+    const res = await fetch(`${worker}/${dbId}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} sur ${dbId}`);
+    const data = await res.json();
+    if (data.message) throw new Error(data.message);
+    results = results.concat(data.results || []);
+    cursor = data.has_more ? data.next_cursor : null;
+  } while (cursor);
+  return results;
+}
+
 async function loadData() {
   const btn = document.getElementById('btnRefresh');
   btn.disabled = true;
@@ -203,10 +232,11 @@ async function loadData() {
   const dateStart = `${currentYear}-${String(currentMonth).padStart(2,'0')}-01`;
   const dateEnd   = `${nextYear}-${String(nextMonth).padStart(2,'0')}-01`;
 
-  const WORKER      = 'https://notion-proxy.pmerienne.workers.dev';
-  const DB_REVENUS  = '303892c600e6813894a1caa73b8d428a';
-  const DB_DEPENSES = '303892c600e681a18695ee895b5edc99';
-  const ID_SG       = '303892c600e68196bb13d295cf5a52c5';
+  const WORKER           = 'https://notion-proxy.pmerienne.workers.dev';
+  const DB_REVENUS       = '303892c600e6813894a1caa73b8d428a';
+  const DB_DEPENSES      = '303892c600e681a18695ee895b5edc99';
+  const DB_TRANSACTIONS  = '303892c600e6817496f0000bbc2ba435';
+  const ID_SG            = '303892c600e68196bb13d295cf5a52c5';
 
   const filterRevenus = {
     filter: { and: [
@@ -222,39 +252,33 @@ async function loadData() {
       { property: 'Compte', relation: { contains: ID_SG } }
     ]}
   };
+  // Transactions impliquant le compte SG (entrante OU sortante)
+  const filterTransactions = {
+    filter: { and: [
+      { property: 'Date', date: { on_or_after: dateStart } },
+      { property: 'Date', date: { before: dateEnd } },
+      { or: [
+        { property: 'Vers le compte', relation: { contains: ID_SG } },
+        { property: 'De Compte',      relation: { contains: ID_SG } }
+      ]}
+    ]}
+  };
 
   try {
-    let revenus = [], cursor = null;
-    do {
-      const body = { page_size: 100, ...filterRevenus };
-      if (cursor) body.start_cursor = cursor;
-      const res = await fetch(`${WORKER}/${DB_REVENUS}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-      });
-      if (!res.ok) throw new Error(`Revenus HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.message) throw new Error(data.message);
-      revenus = revenus.concat(data.results || []);
-      cursor = data.has_more ? data.next_cursor : null;
-    } while (cursor);
+    setStatus('Chargement des revenus…', 'loading');
+    const revenus = await fetchAll(WORKER, DB_REVENUS, filterRevenus);
 
-    let depenses = [];
-    cursor = null;
-    do {
-      const body = { page_size: 100, ...filterDepenses };
-      if (cursor) body.start_cursor = cursor;
-      const res = await fetch(`${WORKER}/${DB_DEPENSES}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
-      });
-      if (!res.ok) throw new Error(`Dépenses HTTP ${res.status}`);
-      const data = await res.json();
-      if (data.message) throw new Error(data.message);
-      depenses = depenses.concat(data.results || []);
-      cursor = data.has_more ? data.next_cursor : null;
-    } while (cursor);
+    setStatus('Chargement des dépenses…', 'loading');
+    const depenses = await fetchAll(WORKER, DB_DEPENSES, filterDepenses);
 
-    setStatus(`✓ ${revenus.length} revenus · ${depenses.length} dépenses chargés`, 'ok');
-    processData(revenus, depenses);
+    setStatus('Chargement des transactions…', 'loading');
+    const transactions = await fetchAll(WORKER, DB_TRANSACTIONS, filterTransactions);
+
+    setStatus(
+      `✓ ${revenus.length} revenus · ${depenses.length} dépenses · ${transactions.length} transaction(s) chargé(s)`,
+      'ok'
+    );
+    processData(revenus, depenses, transactions);
   } catch(e) {
     setStatus('Erreur : ' + e.message, 'error');
     console.error(e);
@@ -263,11 +287,12 @@ async function loadData() {
   }
 }
 
-function processData(revenus, depenses) {
+function processData(revenus, depenses, transactions) {
   const soldeInitial = parseFloat(document.getElementById('soldeInitial').value) || 0;
+  const ID_SG        = '303892c600e68196bb13d295cf5a52c5';
   const daysInMonth  = new Date(currentYear, currentMonth, 0).getDate();
   const byDay = {};
-  for (let d = 1; d <= daysInMonth; d++) byDay[d] = { e: 0, s: 0 };
+  for (let d = 1; d <= daysInMonth; d++) byDay[d] = { e: 0, s: 0, t_in: 0, t_out: 0 };
 
   revenus.forEach(row => {
     const props = row.properties;
@@ -287,14 +312,28 @@ function processData(revenus, depenses) {
     byDay[day].s += getMontant(props);
   });
 
+  transactions.forEach(row => {
+    const props = row.properties;
+    const dateVal = props['Date']?.date?.start;
+    if (!dateVal) return;
+    const day = parseInt(dateVal.split('-')[2]);
+    if (!byDay[day]) return;
+    const montant = getMontant(props);
+    const versLeSG  = hasRelation(props, 'Vers le compte', ID_SG);
+    const deLesSG   = hasRelation(props, 'De Compte',      ID_SG);
+    if (versLeSG) byDay[day].t_in  += montant;
+    if (deLesSG)  byDay[day].t_out += montant;
+  });
+
   let solde = soldeInitial;
   const tableData = [];
   for (let d = 1; d <= daysInMonth; d++) {
-    solde = Math.round((solde + byDay[d].e - byDay[d].s) * 100) / 100;
-    tableData.push({ j: d, e: byDay[d].e, s: byDay[d].s, solde });
+    const { e, s, t_in, t_out } = byDay[d];
+    solde = Math.round((solde + e - s + t_in - t_out) * 100) / 100;
+    tableData.push({ j: d, e, s, t_in, t_out, t: t_in - t_out, solde });
   }
 
-  // ── Mémorise le solde final pour alimenter le mois suivant ───────────────
+  // Mémorise le solde final
   const key = monthKey(currentYear, currentMonth);
   MONTH_FINALS[key] = tableData[tableData.length - 1].solde;
 
@@ -306,12 +345,24 @@ function processData(revenus, depenses) {
 function renderKPIs(soldeInitial, data) {
   const totalE = data.reduce((a,d) => a+d.e, 0);
   const totalS = data.reduce((a,d) => a+d.s, 0);
+  const totalTIn  = data.reduce((a,d) => a+d.t_in, 0);
+  const totalTOut = data.reduce((a,d) => a+d.t_out, 0);
+  const totalT = totalTIn - totalTOut;
   const final  = data[data.length-1].solde;
 
   document.getElementById('kpiInit').textContent  = fmt(soldeInitial);
   document.getElementById('kpiInit').className    = 'kpi-value ' + (soldeInitial>=0?'pos':'neg');
   document.getElementById('kpiIn').textContent    = '+' + fmtAbs(totalE);
   document.getElementById('kpiOut').textContent   = '-' + fmtAbs(totalS);
+
+  const kpiT = document.getElementById('kpiTransferts');
+  kpiT.textContent = fmt(totalT);
+  kpiT.className   = 'kpi-value ' + (totalT > 0 ? 'pos' : totalT < 0 ? 'neg' : 'transfer');
+  document.getElementById('kpiTransfertsSub').textContent =
+    totalTIn > 0 || totalTOut > 0
+      ? `↑ ${fmtAbs(totalTIn)}  ↓ ${fmtAbs(totalTOut)}`
+      : 'aucun mouvement';
+
   document.getElementById('kpiFinal').textContent = fmt(final);
   document.getElementById('kpiFinal').className   = 'kpi-value ' + (final>=0?'pos':'neg');
 
@@ -340,12 +391,15 @@ function renderKPIs(soldeInitial, data) {
 }
 
 function renderChart(data) {
-  const labels  = data.map(d => `${d.j}`);
-  const soldes  = data.map(d => d.solde);
-  const entrees = data.map(d => d.e);
-  const sorties = data.map(d => -d.s);
-  const ptColors = soldes.map(s => s>=0 ? '#4d9fff' : '#ff4d6d');
+  const labels     = data.map(d => `${d.j}`);
+  const soldes     = data.map(d => d.solde);
+  const entrees    = data.map(d => d.e);
+  const sorties    = data.map(d => -d.s);
+  const transferts = data.map(d => d.t);
+  const ptColors   = soldes.map(s => s>=0 ? '#4d9fff' : '#ff4d6d');
+
   if (chartInstance) chartInstance.destroy();
+
   const zonePlugin = {
     id: 'negZone',
     beforeDraw(chart) {
@@ -355,23 +409,37 @@ function renderChart(data) {
       ctx.fillRect(x.left, yZ, x.right-x.left, y.bottom-yZ); ctx.restore();
     }
   };
+
   const ctx = document.getElementById('mainChart').getContext('2d');
   chartInstance = new Chart(ctx, {
     type: 'bar', plugins: [zonePlugin],
     data: { labels, datasets: [
       { type:'line', label:'Solde cumulé', data:soldes, borderColor:'#4d9fff', backgroundColor:'rgba(77,159,255,0.07)', borderWidth:2.5, pointBackgroundColor:ptColors, pointBorderColor:ptColors, pointRadius:3, pointHoverRadius:5, tension:0.3, fill:true, order:0, yAxisID:'y' },
-      { type:'bar', label:'Entrées', data:entrees, backgroundColor:'rgba(0,179,122,0.45)', borderColor:'rgba(0,179,122,0.75)', borderWidth:1, borderRadius:3, order:1, yAxisID:'y2' },
-      { type:'bar', label:'Sorties', data:sorties, backgroundColor:'rgba(230,51,85,0.45)', borderColor:'rgba(230,51,85,0.75)', borderWidth:1, borderRadius:3, order:1, yAxisID:'y2' }
+      { type:'bar', label:'Entrées',       data:entrees,    backgroundColor:'rgba(0,179,122,0.45)',  borderColor:'rgba(0,179,122,0.75)',  borderWidth:1, borderRadius:3, order:1, yAxisID:'y2' },
+      { type:'bar', label:'Sorties',       data:sorties,    backgroundColor:'rgba(230,51,85,0.45)',  borderColor:'rgba(230,51,85,0.75)',  borderWidth:1, borderRadius:3, order:1, yAxisID:'y2' },
+      { type:'bar', label:'Transferts',    data:transferts, backgroundColor:'rgba(245,158,11,0.50)', borderColor:'rgba(245,158,11,0.80)', borderWidth:1, borderRadius:3, order:1, yAxisID:'y2' }
     ]},
     options: {
       responsive:true, interaction:{mode:'index',intersect:false},
-      plugins: { legend:{display:false}, tooltip:{ backgroundColor:'#ffffff', titleColor:'#1a1a2e', bodyColor:'#888888', borderColor:'#e0e0e0', borderWidth:1, padding:10, titleFont:{family:'Inter',size:11,weight:'700'}, bodyFont:{family:'Inter',size:10},
-        callbacks: { title:c=>`${c[0].label} ${MONTHS_FR[currentMonth-1]} ${currentYear}`, label:c=>{ const v=c.raw,a=Math.abs(v); if(c.dataset.label==='Solde cumulé') return ` Solde : ${v>=0?'+':''}${v.toFixed(2).replace('.',',')} €`; if(c.dataset.label==='Entrées') return ` Entrées : +${a.toFixed(2).replace('.',',')} €`; if(c.dataset.label==='Sorties') return ` Sorties : -${a.toFixed(2).replace('.',',')} €`; } }
+      plugins: { legend:{display:false}, tooltip:{
+        backgroundColor:'#ffffff', titleColor:'#1a1a2e', bodyColor:'#888888', borderColor:'#e0e0e0', borderWidth:1, padding:10,
+        titleFont:{family:'Inter',size:11,weight:'700'}, bodyFont:{family:'Inter',size:10},
+        callbacks: {
+          title: c => `${c[0].label} ${MONTHS_FR[currentMonth-1]} ${currentYear}`,
+          label: c => {
+            const v=c.raw, a=Math.abs(v);
+            if (c.dataset.label==='Solde cumulé')  return ` Solde : ${v>=0?'+':''}${v.toFixed(2).replace('.',',')} €`;
+            if (c.dataset.label==='Entrées')        return ` Entrées : +${a.toFixed(2).replace('.',',')} €`;
+            if (c.dataset.label==='Sorties')        return ` Sorties : -${a.toFixed(2).replace('.',',')} €`;
+            if (c.dataset.label==='Transferts' && v!==0) return ` Transferts : ${v>=0?'+':''}${v.toFixed(2).replace('.',',')} €`;
+            return null;
+          }
+        }
       }},
       scales: {
-        x:{ grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#888888',font:{family:'Inter',size:9}}, border:{color:'#e0e0e0'} },
-        y:{ position:'left', grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#888888',font:{family:'Inter',size:9},callback:v=>(v>=0?'+':'')+v.toLocaleString('fr-FR')+' €'}, border:{color:'#e0e0e0'} },
-        y2:{ position:'right', grid:{display:false}, ticks:{color:'#888888',font:{family:'Inter',size:9},callback:v=>Math.abs(v).toLocaleString('fr-FR')+' €'}, border:{color:'#e0e0e0'} }
+        x:  { grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#888888',font:{family:'Inter',size:9}}, border:{color:'#e0e0e0'} },
+        y:  { position:'left',  grid:{color:'rgba(0,0,0,0.04)'}, ticks:{color:'#888888',font:{family:'Inter',size:9},callback:v=>(v>=0?'+':'')+v.toLocaleString('fr-FR')+' €'}, border:{color:'#e0e0e0'} },
+        y2: { position:'right', grid:{display:false},             ticks:{color:'#888888',font:{family:'Inter',size:9},callback:v=>Math.abs(v).toLocaleString('fr-FR')+' €'},     border:{color:'#e0e0e0'} }
       }
     }
   });
@@ -380,20 +448,44 @@ function renderChart(data) {
 function renderTable(data) {
   const now = new Date();
   const todayDay = (currentYear === now.getFullYear() && currentMonth === now.getMonth()+1) ? now.getDate() : -1;
-  const maxFlow = Math.max(...data.map(d=>Math.max(d.e,d.s)),1);
-  let html = `<table><thead><tr><th>Jour</th><th>Entrées</th><th>Sorties</th><th>Net du jour</th><th>Solde cumulé</th><th>Flux</th></tr></thead><tbody>`;
+  const maxFlow  = Math.max(...data.map(d => Math.max(d.e, d.s, Math.abs(d.t))), 1);
+  let html = `<table><thead><tr>
+    <th>Jour</th><th>Entrées</th><th>Sorties</th><th>Transferts</th><th>Net du jour</th><th>Solde cumulé</th><th>Flux</th>
+  </tr></thead><tbody>`;
+
   data.forEach(d => {
-    const net=d.e-d.s, isZero=d.e===0&&d.s===0, isToday=d.j===todayDay;
-    const wIn=Math.round(d.e/maxFlow*70), wOut=Math.round(d.s/maxFlow*70);
-    html += `<tr class="${isZero?'zero-row':''}${isToday?' today-row':''}">
+    const net = d.e - d.s + d.t;
+    const isZero     = d.e===0 && d.s===0 && d.t===0;
+    const isToday    = d.j === todayDay;
+    const hasTransfer = d.t !== 0;
+    const wIn   = Math.round(d.e / maxFlow * 60);
+    const wOut  = Math.round(d.s / maxFlow * 60);
+    const wTr   = Math.round(Math.abs(d.t) / maxFlow * 60);
+
+    let transferCell = '—';
+    if (d.t_in > 0 && d.t_out > 0) {
+      transferCell = `<span class="tag tag-transfer">${fmt(d.t)}</span>`;
+    } else if (d.t_in > 0) {
+      transferCell = `<span style="color:var(--accent-green);font-weight:600">+${fmtAbs(d.t_in)}</span>`;
+    } else if (d.t_out > 0) {
+      transferCell = `<span style="color:var(--accent-orange);font-weight:600">-${fmtAbs(d.t_out)}</span>`;
+    }
+
+    html += `<tr class="${isZero?'zero-row':''}${isToday?' today-row':''}${hasTransfer?' has-transfer':''}">
       <td><b>${d.j} ${MONTHS_FR[currentMonth-1].substring(0,3).toLowerCase()}.</b>${isToday?' <span style="font-size:0.55rem;color:var(--accent-blue);font-weight:600;letter-spacing:0.04em;"> AUJOURD\'HUI</span>':''}</td>
       <td class="pos">${d.e>0?'+'+fmtAbs(d.e):'—'}</td>
       <td class="neg">${d.s>0?'-'+fmtAbs(d.s):'—'}</td>
+      <td>${transferCell}</td>
       <td><span class="tag ${net>=0?'tag-pos':'tag-neg'}">${fmt(net)}</span></td>
       <td class="${d.solde>=0?'pos':'neg'}"><b>${fmt(d.solde)}</b></td>
-      <td>${d.e>0?`<div class="mini-bar" style="width:${wIn}px;background:var(--accent-green)"></div>`:''}${d.s>0?`<div class="mini-bar" style="width:${wOut}px;background:var(--accent-red)"></div>`:''}</td>
+      <td>
+        ${d.e>0?`<div class="mini-bar" style="width:${wIn}px;background:var(--accent-green)"></div>`:''}
+        ${d.s>0?`<div class="mini-bar" style="width:${wOut}px;background:var(--accent-red)"></div>`:''}
+        ${Math.abs(d.t)>0?`<div class="mini-bar" style="width:${wTr}px;background:var(--accent-orange)"></div>`:''}
+      </td>
     </tr>`;
   });
+
   html += '</tbody></table>';
   document.getElementById('tableWrap').innerHTML = html;
 }
